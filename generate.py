@@ -1,5 +1,8 @@
-import torch
+import argparse
 import pickle
+
+import torch
+
 from src.my_model import Transformer_LM, get_device, softmax
 from src.my_tokenizer import Tokenizer
 from src.training_loop import load_checkpoint
@@ -73,7 +76,7 @@ def top_p_filter(pro,p):
 
     
 @torch.no_grad()
-def sample_next_token(model,token_ids,temperatrue = 0.5,top_p = 0.9,device = device):
+def sample_next_token(model,token_ids,temperatrue = 0.8,top_p = 0.9,device = device):
 
     torch_token_ids = torch.tensor(token_ids).to(device)
     if len(torch_token_ids) > context_length:
@@ -95,17 +98,28 @@ def sample_next_token(model,token_ids,temperatrue = 0.5,top_p = 0.9,device = dev
     return chose_id
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument("prompt", nargs="?", default=None)
+parser.add_argument("--prompt", dest="prompt_opt", default=None)
+parser.add_argument("--temperature", type=float, default=0.8)
+parser.add_argument("--top_p", type=float, default=0.9)
+parser.add_argument("--seed", type=int, default=None)
+args = parser.parse_args()
 
-prompt = "Once upon a time"
+prompt = args.prompt_opt or args.prompt or "My name is Tom. I live in a beautiful place."
+if args.seed is not None:
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
 
 token_ids = tokenizer.encode(prompt)
 
-new_token = 100
+new_token = 250
 
 
 
 for _ in range(new_token):
-    new_id = sample_next_token(model,token_ids)
+    new_id = sample_next_token(model,token_ids,temperatrue=args.temperature,top_p=args.top_p)
 
     token_ids.append(new_id)
 
@@ -115,8 +129,3 @@ for _ in range(new_token):
 
 text = tokenizer.decode(token_ids)
 print(text)
-
-
-
-
-

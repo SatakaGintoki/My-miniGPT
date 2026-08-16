@@ -16,13 +16,13 @@ TOKENIZER_CONFIG = {
 
 TRAIN_CONFIG = {
     "batch_size": 32,
-    "max_steps": 5000,
+    "max_steps": 170000,
     "lr": 3e-4,
     "max_lr": 3e-4,
     "min_lr": 3e-5,
-    "warmup_steps": 400,
+    "warmup_steps": 2000,
     "grad_clip_val": 1.0,
-  
+
     "betas": (0.9, 0.95),
     "weight_decay": 0.1,
     "eps": 1e-8,
@@ -33,5 +33,5 @@ PATHS = {
     "vocab": "data/vocab.pkl",
     "merges": "data/merges.pkl",
     "checkpoint": "checkpoint.pt",
-    "corpus": "data/train_50m.txt",
+    "corpus": "data/TinyStoriesV2-GPT4-train.txt",
 }

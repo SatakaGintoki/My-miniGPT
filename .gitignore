@@ -8,8 +8,11 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
-# Data (regenerable via prepare_data.py)
-data/
+# Data (corpus and encoded tokens are large; keep tokenizer artifacts)
+data/*
+!data/README.md
+!data/vocab.pkl
+!data/merges.pkl
 
 # Trained artifacts (too large for GitHub)
 *.pt
@@ -20,3 +23,6 @@ data/
 # IDE
 .idea/
 .vscode/
+
+# Unrelated local folders
+rag-chatbot/

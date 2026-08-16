@@ -26,10 +26,10 @@ def get_batch(x,batch_size,context_length,device = None):
     inputs_np = x[ix]
     targets_np = x[ix+1]
 
-    inputs = torch.tensor(inputs_np, dtype=torch.long)
-    targets = torch.tensor(targets_np, dtype=torch.long)
+    inputs = torch.tensor(inputs_np, dtype=torch.long, device=device)
+    targets = torch.tensor(targets_np, dtype=torch.long, device=device)
 
-    return inputs,targets
+    return inputs, targets
 
 
 def save_checkpoint(model,optimizer,iteration,out):
@@ -45,8 +45,10 @@ def save_checkpoint(model,optimizer,iteration,out):
 
     return
 
-def load_checkpoint(src,model,optimizer=None):
-    dic = torch.load(src)
+def load_checkpoint(src, model, optimizer=None, map_location=None):
+    if map_location is None:
+        map_location = next(model.parameters()).device
+    dic = torch.load(src, map_location=map_location, weights_only=False)
 
     model.load_state_dict(dic["model"])
     if optimizer is not None:

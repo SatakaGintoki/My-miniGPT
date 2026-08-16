@@ -1,0 +1,15 @@
+# Post-hoc eval of checkpoint.pt (iteration 170000)
+
+Not from the original training stdout (that log was not saved).
+Measured 2026-08-16 on RTX 4060, seed=0.
+
+Data: data/train_tokens.npy  (541,412,033 tokens)
+Split: first 90% train / last 10% val  (same as train.py)
+Batch: 32 x context 256, same handwritten cross_entropy in fp32
+n_batches: 32 random windows each
+
+VAL   mean=1.3189  std=0.0559  min=1.2113  max=1.4200
+TRAIN mean=1.3076  std=0.0434  min=1.2411  max=1.4307
+
+Uniform-random baseline: log(10000) = 9.2103
+3000-step smoke run ended near train 3.31 / val 3.19 (see metrics_3000.csv).

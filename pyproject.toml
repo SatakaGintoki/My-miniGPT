@@ -8,4 +8,5 @@ dependencies = [
     "numpy>=2.4",
     "einops>=0.8",
     "regex",
+    "matplotlib>=3.11.1",
 ]
