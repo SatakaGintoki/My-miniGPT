@@ -2,7 +2,7 @@
 
 从零实现的 Transformer 语言模型（约 22.7M 参数），在 TinyStories 上训练。分词、模型、优化器、训练循环都是手写的：不用 `nn.Transformer`，也不用 HuggingFace Trainer。
 
-本仓库是斯坦福 CS336 Assignment 1 的个人实现，整理到可以训练和采样。**核心代码全部手写，没有使用 AI 生成，供对照学习。** 它不是一个封装好的库。
+本仓库是斯坦福 CS336 Assignment 1 的个人实现，整理到可以训练和采样。**`src/` 核心代码手写；README 撰写和代码调试由 AI 辅助完成。** 它不是一个封装好的库。
 
 ## 关于实现（供学习）
 
@@ -109,37 +109,60 @@ RTX 4060 8GB 上 170k step 的墙上时间：**5.8 小时**（20833 秒，见 `r
 
 ## 模型结构
 
-Pre-norm Transformer。没有可学习的绝对位置编码，位置信息来自 Q、K 上的 RoPE。MLP 是 SwiGLU（SiLU 门控），不是 GELU。归一化是 RMSNorm，不是 LayerNorm。
+整网是一个 decoder-only 的语言模型，代码在 `src/my_model.py`。前向就是：token id → 向量 → 重复 4 次同样的块 → 再归一化 → 投影回词表。
+
+和常见 GPT-2 教程的差别：
+
+- **位置：** 没有可学习的绝对位置 embedding。RoPE 加在每个头的 Q、K 上（`theta=10000`）。
+- **归一化：** RMSNorm（除以均方根），不是 LayerNorm。块内是 pre-norm：先 norm 再进注意力 / MLP。
+- **MLP：** SwiGLU，`silu(xW1) * (xW3)` 再乘 `W2`，不是 GELU 两层 MLP。
+- **线性层：** 自己写的 `Linear` / `Embedding`，没有 bias。`lm_head` 没有和 embedding 绑权重。
+
+一块里面两行残差，和 `Transformer_Block.forward` 一致：
+
+```
+x = x + Attention(RMSNorm(x))     # 16 头，因果 mask，RoPE
+x = x + SwiGLU(RMSNorm(x))
+```
 
 ```mermaid
 flowchart TD
-    ids[token ids] --> emb[Embedding vocab x d_model]
-    emb --> b1[x N layers]
-    subgraph layer [Transformer block]
-      n1[RMSNorm] --> attn[MHSA + RoPE + 因果 mask]
-      attn --> add1["+ residual"]
-      add1 --> n2[RMSNorm]
-      n2 --> ffn[SwiGLU]
-      ffn --> add2["+ residual"]
+    ids["token ids  (B, T)"] --> emb["Embedding  10000 × 512"]
+    emb --> blk["× 4  Transformer_Block"]
+
+    subgraph one ["一块里实际做的事"]
+      direction TB
+      x0["x"] --> n1["RMSNorm"]
+      n1 --> attn["MHSA：拆成 16 个头，每头 32 维<br/>RoPE 加在 Q、K 上<br/>QKᵀ / √32，下三角 mask，softmax，W_O"]
+      x0 --> add1["x + attn"]
+      attn --> add1
+      add1 --> n2["RMSNorm"]
+      n2 --> ffn["SwiGLU  512 → 1344 → 512"]
+      add1 --> add2["x + ffn"]
+      ffn --> add2
     end
-    b1 --> nf[RMSNorm]
-    nf --> head[Linear d_model x vocab]
-    head --> logits[logits]
+
+    blk -.-> one
+    blk --> nf["RMSNorm"]
+    nf --> head["Linear  512 → 10000"]
+    head --> logits["logits  (B, T, 10000)"]
 ```
 
-注意力是标准的缩放点积：`QK^T / sqrt(d_k)`，下三角 mask（未来位置填 `-inf`），再 softmax。`d_k = d_model / num_heads = 32`。
+注意力是手写的缩放点积：`QK^T / sqrt(d_k)`，未来位置填 `-inf`，再 softmax。`d_k = 512 / 16 = 32`。采样时序列超过 256 只保留末尾 256 个 id（RoPE 的 cache 也只建到这个长度）。
 
 | | |
 |---|---|
 | 词表 | 10,000 |
-| 上下文 | 256 |
+| 上下文 T | 256 |
 | 层数 | 4 |
 | d_model | 512 |
 | 头数 | 16 |
+| d_k | 32 |
 | d_ff | 1344 |
 | RoPE θ | 10,000 |
 | 参数量 | 22,696,448 |
 
+参数量是从 checkpoint 的 `state_dict` 数出来的，不是估算。
 ## 训练结果
 
 有日志的这一次：`checkpoints/run170k.pt`，`results/metrics_170k.csv`。RTX 4060 8GB，**5.8 小时**（20833 秒）。
@@ -260,4 +283,4 @@ python generate.py --prompt "Once upon a time" --temperature 0.8 --seed 42
 
 ## License
 
-[待补]
+MIT License, see `LICENSE`.
